@@ -18,14 +18,8 @@ public final class TemplateByteScanner {
     /// `Data` being scanned.
     public let data: Data
 
-    /// Byte location information
-    var pointer: UnsafePointer<UInt8>
-
     /// Byte end address.
-    let endAddress: UnsafePointer<UInt8>
-
-    /// Current buffer.
-    var buffer: UnsafeBufferPointer<UInt8>
+    let endIndex: Int
 
     /// Create a new `TemplateByteScanner`.
     ///
@@ -35,12 +29,8 @@ public final class TemplateByteScanner {
     public init(data: Data, file: String) {
         self.file = file
         self.data = data
-        self.buffer = data.withUnsafeBytes { (pointer: UnsafePointer<UInt8>) in
-            return UnsafeBufferPointer(start: pointer, count: data.count)
-        }
 
-        self.pointer = buffer.baseAddress!
-        self.endAddress = buffer.baseAddress!.advanced(by: buffer.endIndex)
+        self.endIndex = data.endIndex
         self.offset = 0
         self.line = 0
         self.column = 0
@@ -53,23 +43,23 @@ public final class TemplateByteScanner {
     /// - returns:
     ///     - Byte requested if not past end of data.
     public func peek(by amount: Int = 0) -> UInt8? {
-        guard pointer.advanced(by: amount) < endAddress else {
+        guard offset + amount < endIndex else {
             return nil
         }
-        return pointer.advanced(by: amount).pointee
+        return data[offset + amount]
     }
 
     /// Returns current byte and increments byte pointer.
     public func pop() -> UInt8? {
-        guard pointer != endAddress else {
+        guard offset < endIndex else {
             return nil
         }
 
         defer {
-            pointer = pointer.advanced(by: 1)
             offset += 1
         }
-        let element = pointer.pointee
+
+        let element = data[offset]
         column += 1
         if element == .newLine {
             line += 1
